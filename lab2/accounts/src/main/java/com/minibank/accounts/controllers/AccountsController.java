@@ -1,6 +1,7 @@
 package com.minibank.accounts.controllers;
 
 import com.minibank.accounts.model.dtos.AccountDTO;
+import com.minibank.accounts.model.dtos.AccountsContactInfoDto;
 import com.minibank.accounts.model.dtos.CreateAccountDTO;
 import com.minibank.accounts.services.AccountService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class AccountsController {
 
     private final AccountService accountService;
-
+    private final AccountsContactInfoDto accountsContactInfoDto;
 
     @PostMapping
     @Operation(summary = "Create a new account")
@@ -52,5 +54,12 @@ public class AccountsController {
             @ApiResponse(responseCode = "500", description = "Internal server error")})
     public ResponseEntity<Object> deleteAccount(@RequestParam("accountNumber") String accountNumber) {
         return ResponseEntity.ok().body(accountService.deleteAccount(accountNumber));
+    }
+
+    @GetMapping("/contact-info")
+    public ResponseEntity<AccountsContactInfoDto> getContactInfo() {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(accountsContactInfoDto);
     }
 }

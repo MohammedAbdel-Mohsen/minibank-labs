@@ -16,7 +16,7 @@ services:
       service: network-deploy-service
 
   configserver:
-    image: "muhammadelnawam/accounts:lab2"
+    image: "muhammadelnawam/accounts:l2"
     container_name: configserver-ms
     ports:
       - "8071:8071"
@@ -34,7 +34,7 @@ services:
       service: microservice-base-config
 
   accounts:
-    image: "muhammadelnawam/accounts:lab2"
+    image: "muhammadelnawam/accounts:l2"
     container_name: accounts-ms
     ports:
       - "8080:8080"
@@ -48,7 +48,7 @@ services:
       service: microservice-configserver-config
 
   loans:
-    image: "muhammadelnawam/loans:lab2"
+    image: "muhammadelnawam/loans:l2"
     container_name: loans-ms
     ports:
       - "8090:8090"

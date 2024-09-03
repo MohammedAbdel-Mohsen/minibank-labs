@@ -11,7 +11,7 @@ spring:
           # search-locations: "classpath:/config"
           # search-locations: "file:///Users//minibank//Documents//config"
         git:
-          uri: "https://gitlab.com/MuhammadElnawam/minibank-config.git"
+          uri: "https://github.com/MohammedAbdel-Mohsen/minibank-config.git"
           default-label: main
           timeout: 5
           clone-on-start: true
