@@ -15,103 +15,173 @@ services:
       file: common-config.yml
       service: network-deploy-service
 
-  configserver:
-    image: "muhammadelnawam/configserver:l2"
-    container_name: configserver-ms
+  # Prometheus (Monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
-      - "8071:8071"
-    depends_on:
-      rabbit:
-        condition: service_healthy
-    healthcheck:
-      test: "curl --fail --silent localhost:8071/actuator/health/readiness | grep UP || exit 1"
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      - '9090:9090'
     extends:
       file: common-config.yml
-      service: microservice-base-config
+      service: network-deploy-service
 
-  eurekaserver:
-    image: "muhammadelnawam/eurekaserver:l2"
-    container_name: eurekaserver-ms
+  # Grafana (Dashboards)
+  grafana:
+    image: grafana/grafana:latest
     ports:
-      - "8070:8070"
+      - '3000:3000'
     depends_on:
-      configserver:
-        condition: service_healthy
-    healthcheck:
-      test: "curl --fail --silent localhost:8070/actuator/health/readiness | grep UP || exit 1"
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      - prometheus
     extends:
       file: common-config.yml
-      service: microservice-configserver-config
-    environment:
-      SPRING_APPLICATION_NAME: "eurekaserver"
+      service: network-deploy-service
 
-  accounts:
-    image: "muhammadelnawam/accounts:l2"
-    container_name: accounts-ms
-    ports:
-      - "8080:8080"
-    depends_on:
-      configserver:
-        condition: service_healthy
-      eurekaserver:
-        condition: service_healthy
-    healthcheck:
-      test: "curl --fail --silent localhost:8080/actuator/health/readiness | grep UP || exit 1"
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+  # Elasticsearch (Logging)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
     environment:
-      SPRING_APPLICATION_NAME: "accounts"
+      - discovery.type=single-node
+    ports:
+      - '9200:9200'
+      - '9300:9300'
+    volumes:
+      - ./elasticsearch-data:/usr/share/elasticsearch/data
     extends:
       file: common-config.yml
-      service: microservice-eureka-config
+      service: network-deploy-service
 
-  loans:
-    image: "muhammadelnawam/loans:l2"
-    container_name: loans-ms
-    ports:
-      - "8090:8090"
-    depends_on:
-      configserver:
-        condition: service_healthy
-      eurekaserver:
-        condition: service_healthy
-    healthcheck:
-      test: "curl --fail --silent localhost:8090/actuator/health/readiness | grep UP || exit 1"
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+  # Jaeger (Distributed Tracing)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
     environment:
-      SPRING_APPLICATION_NAME: "loans"
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    ports:
+      - '5775:5775/udp'    # UDP port for receiving traces
+      - '6831:6831/udp'    # UDP port for receiving traces
+      - '6832:6832/udp'    # UDP port for receiving traces
+      - '5778:5778'        # HTTP port for service discovery
+      - '16686:16686'      # Jaeger UI
+      - '14268:14268'      # HTTP port for receiving traces
+      - '14250:14250'      # gRPC port for OpenTelemetry
+      - '9411:9411'        # Zipkin compatibility
     extends:
       file: common-config.yml
-      service: microservice-eureka-config
+      service: network-deploy-service
 
-  gatewayserver:
-    image: "muhammadelnawam/gatewayserver:l2"
-    container_name: gatewayserver-ms
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
     ports:
-      - "8072:8072"
-    depends_on:
-      accounts:
-        condition: service_healthy
-      loans:
-        condition: service_healthy
+      - "4317:4317"  # gRPC port for OTLP
+      - "4318:4318"  # HTTP port for OTLP
     environment:
-      SPRING_APPLICATION_NAME: "gatewayserver"
+      # Add environment variables to configure the OpenTelemetry Collector
+      - OTEL_TRACES_EXPORTER=jaeger
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_EXPORTER_JAEGER_ENDPOINT=http://jaeger:14250
+      - OTEL_SERVICE_NAME=otel-collector
     extends:
       file: common-config.yml
-      service: microservice-eureka-config
+      service: network-deploy-service
+
+#  configserver:
+#    image: "muhammadelnwam/configserver:l2"
+#    container_name: configserver-ms
+#    ports:
+#      - "8071:8071"
+#    depends_on:
+#      rabbit:
+#        condition: service_healthy
+#    healthcheck:
+#      test: "curl --fail --silent localhost:8071/actuator/health/readiness | grep UP || exit 1"
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 10s
+#    extends:
+#      file: common-config.yml
+#      service: microservice-base-config
+#
+#  eurekaserver:
+#    image: "muhammadelnwam/eurekaserver:l2"
+#    container_name: eurekaserver-ms
+#    ports:
+#      - "8070:8070"
+#    depends_on:
+#      configserver:
+#        condition: service_healthy
+#    healthcheck:
+#      test: "curl --fail --silent localhost:8070/actuator/health/readiness | grep UP || exit 1"
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 10s
+#    extends:
+#      file: common-config.yml
+#      service: microservice-configserver-config
+#    environment:
+#      SPRING_APPLICATION_NAME: "eurekaserver"
+
+#  accounts:
+#    image: "muhammadelnwam/accounts:l2"
+#    container_name: accounts-ms
+#    ports:
+#      - "8088:8088"
+#    depends_on:
+#      configserver:
+#        condition: service_healthy
+#      eurekaserver:
+#        condition: service_healthy
+#    healthcheck:
+#      test: "curl --fail --silent localhost:8088/actuator/health/readiness | grep UP || exit 1"
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 10s
+#    environment:
+#      SPRING_APPLICATION_NAME: "accounts"
+#    extends:
+#      file: common-config.yml
+#      service: microservice-eureka-config
+
+#  loans:
+#    image: "muhammadelnawam/loans:l2"
+#    container_name: loans-ms
+#    ports:
+#      - "8090:8090"
+#    depends_on:
+#      configserver:
+#        condition: service_healthy
+#      eurekaserver:
+#        condition: service_healthy
+#    healthcheck:
+#      test: "curl --fail --silent localhost:8090/actuator/health/readiness | grep UP || exit 1"
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 10s
+#    environment:
+#      SPRING_APPLICATION_NAME: "loans"
+#    extends:
+#      file: common-config.yml
+#      service: microservice-eureka-config
+#
+#  gatewayserver:
+#    image: "muhammadelnawam/gatewayserver:l2"
+#    container_name: gatewayserver-ms
+#    ports:
+#      - "8072:8072"
+#    depends_on:
+#      accounts:
+#        condition: service_healthy
+#      loans:
+#        condition: service_healthy
+#    environment:
+#      SPRING_APPLICATION_NAME: "gatewayserver"
+#    extends:
+#      file: common-config.yml
+#      service: microservice-eureka-config
 
 networks:
   minibank:
